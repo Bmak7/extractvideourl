@@ -8,7 +8,10 @@ app.post('/extract-video-url', async (req, res) => {
   const { url } = req.body;
 
   try {
-    const browser = await puppeteer.launch();
+    const browser = await puppeteer.launch({
+  args: ['--no-sandbox', '--disable-setuid-sandbox'],
+  executablePath: '/usr/bin/chromium-browser', // Adjust based on Vercel's environment
+});
     const page = await browser.newPage();
     await page.goto(url, { waitUntil: 'networkidle2' });
 
