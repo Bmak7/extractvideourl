@@ -1,24 +1,18 @@
-const puppeteer = require('puppeteer-core');
-const chromium = require('chrome-aws-lambda');
+const express = require('express');
+const puppeteer = require('puppeteer');
 
-module.exports = async (req, res) => {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method Not Allowed' });
-  }
+const app = express();
+app.use(express.json());
 
+app.post('/extract-video-url', async (req, res) => {
   const { url } = req.body;
 
   try {
-    // Launch browser with Vercel-compatible options
-    const browser = await puppeteer.launch({
-      args: [...chromium.args, "--no-sandbox", "--disable-setuid-sandbox"],
-      executablePath: await chromium.executablePath,
-      headless: chromium.headless,
-    });
-
+    const browser = await puppeteer.launch();
     const page = await browser.newPage();
     await page.goto(url, { waitUntil: 'networkidle2' });
 
+    // Extract the video URL using JavaScript
     const videoUrl = await page.evaluate(() => {
       const videoElement = document.querySelector('video');
       return videoElement ? videoElement.src : null;
@@ -27,11 +21,16 @@ module.exports = async (req, res) => {
     await browser.close();
 
     if (videoUrl) {
-      return res.json({ videoUrl });
+      res.json({ videoUrl });
     } else {
-      return res.status(404).json({ error: 'Video URL not found' });
+      res.status(404).json({ error: 'Video URL not found' });
     }
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    res.status(500).json({ error: error.message });
   }
-};
+});
+
+app.listen(3000, () => {
+  console.log('Backend server running on http://localhost:3000');
+});
+
