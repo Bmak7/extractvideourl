@@ -1,4 +1,5 @@
-const puppeteer = require('puppeteer');
+const puppeteer = require('puppeteer-core');
+const chromium = require('chrome-aws-lambda');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
@@ -8,8 +9,11 @@ module.exports = async (req, res) => {
   const { url } = req.body;
 
   try {
+    // Launch browser with Vercel-compatible options
     const browser = await puppeteer.launch({
-      args: ['--no-sandbox', '--disable-setuid-sandbox'], // Required for Vercel
+      args: [...chromium.args, "--no-sandbox", "--disable-setuid-sandbox"],
+      executablePath: await chromium.executablePath,
+      headless: chromium.headless,
     });
 
     const page = await browser.newPage();
