@@ -20,7 +20,8 @@ app.post('/extract-video-url', async (req, res) => {
       });
     } else {
       // Use local Puppeteer for development
-      browser = await chromium.puppeteer.launch({
+      const puppeteer = require('puppeteer-core'); // Import Puppeteer locally
+      browser = await puppeteer.launch({
         args: ['--no-sandbox', '--disable-setuid-sandbox'],
         executablePath: '/usr/bin/chromium-browser', // Adjust based on local environment
       });
