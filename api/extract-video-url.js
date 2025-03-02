@@ -1,5 +1,5 @@
 const express = require('express');
-const puppeteer = require('puppeteer');
+const { chromium } = require('chrome-aws-lambda'); // Use chrome-aws-lambda
 
 const app = express();
 app.use(express.json());
@@ -8,10 +8,24 @@ app.post('/extract-video-url', async (req, res) => {
   const { url } = req.body;
 
   try {
-    const browser = await puppeteer.launch({
-  args: ['--no-sandbox', '--disable-setuid-sandbox'],
-  executablePath: '/usr/bin/chromium-browser', // Adjust based on Vercel's environment
-});
+    let browser = null;
+
+    if (process.env.NODE_ENV === 'production') {
+      // Use chrome-aws-lambda in production (Vercel)
+      browser = await chromium.puppeteer.launch({
+        args: chromium.args,
+        defaultViewport: chromium.defaultViewport,
+        executablePath: await chromium.executablePath,
+        headless: true,
+      });
+    } else {
+      // Use local Puppeteer for development
+      browser = await chromium.puppeteer.launch({
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        executablePath: '/usr/bin/chromium-browser', // Adjust based on local environment
+      });
+    }
+
     const page = await browser.newPage();
     await page.goto(url, { waitUntil: 'networkidle2' });
 
@@ -36,4 +50,3 @@ app.post('/extract-video-url', async (req, res) => {
 app.listen(3000, () => {
   console.log('Backend server running on http://localhost:3000');
 });
-
