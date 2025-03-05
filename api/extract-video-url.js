@@ -1,53 +1,45 @@
 const express = require('express');
-const { chromium } = require('chrome-aws-lambda'); // Use chrome-aws-lambda
+const puppeteer = require('puppeteer');
 
 const app = express();
-app.use(express.json());
+const port = 3000;
 
-app.post('/extract-video-url', async (req, res) => {
-  const { url } = req.body;
+app.get('/extract', async (req, res) => {
+  const doodStreamUrl = req.query.url;
+
+  if (!doodStreamUrl) {
+    return res.status(400).json({ error: 'URL parameter is required' });
+  }
 
   try {
-    let browser = null;
-
-    if (process.env.NODE_ENV === 'production') {
-      // Use chrome-aws-lambda in production (Vercel)
-      browser = await chromium.puppeteer.launch({
-        args: chromium.args,
-        defaultViewport: chromium.defaultViewport,
-        executablePath: await chromium.executablePath,
-        headless: true,
-      });
-    } else {
-      // Use local Puppeteer for development
-      const puppeteer = require('puppeteer-core'); // Import Puppeteer locally
-      browser = await puppeteer.launch({
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
-        executablePath: '/usr/bin/chromium-browser', // Adjust based on local environment
-      });
-    }
-
+    const browser = await puppeteer.launch();
     const page = await browser.newPage();
-    await page.goto(url, { waitUntil: 'networkidle2' });
 
-    // Extract the video URL using JavaScript
-    const videoUrl = await page.evaluate(() => {
-      const videoElement = document.querySelector('video');
-      return videoElement ? videoElement.src : null;
+    // Navigate to the PasteDownload site
+    await page.goto(`https://pastedownload.com/doodstream-video-downloader/#url=${doodStreamUrl}`, {
+      waitUntil: 'networkidle2',
+    });
+
+    // Wait for the download link to appear
+    await page.waitForSelector('a.btn.btn-success.btn-sq', { timeout: 25000 });
+
+    // Extract the download link
+    const downloadLink = await page.evaluate(() => {
+      const linkElement = document.querySelector('a.btn.btn-success.btn-sq');
+      return linkElement ? linkElement.href : null;
     });
 
     await browser.close();
 
-    if (videoUrl) {
-      res.json({ videoUrl });
+    if (downloadLink) {
+      res.json({ downloadLink });
     } else {
-      res.status(404).json({ error: 'Video URL not found' });
+      res.status(404).json({ error: 'Download link not found' });
     }
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error extracting download link:', error);
+    res.status(500).json({ error: 'Failed to extract download link' });
   }
 });
 
-app.listen(3000, () => {
-  console.log('Backend server running on http://localhost:3000');
-});
+app.l
